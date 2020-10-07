@@ -1,0 +1,82 @@
+---
+title: "HW1"
+author: "Yuheng Shi"
+date: "October 7, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+df <- read.csv(file = 'winequality-red.csv', header = TRUE, sep = ';')
+df <- as.data.frame(scale(df))
+
+train_index <- sample(1:nrow(df), 0.8 * nrow(df))
+test_index <- setdiff(1:nrow(df), train_index)
+
+X_train <- data.matrix(df[train_index, -12])
+y_train <- data.matrix(df[train_index, "quality"])
+
+X_test <- data.matrix(df[test_index, -12])
+y_test <- data.matrix(df[test_index, "quality"])
+
+y_predict <- function(par,X){
+  beta_0 <- matrix(par[1])
+  beta_1 <- matrix(par[2:12])
+  y_predict <- as.numeric(beta_0) + X %*% beta_1 
+}
+
+RSS <- function(par, X, y){
+  RSS = sum((y - y_predict(par,X)) ^ 2)
+  return (RSS)
+}
+
+SS_tot <- function(y){
+  y_mean <- as.numeric(mean(y))
+  SS_tot = sum((y - y_mean) ^ 2)
+  return (SS_tot)
+}
+
+beta0 <- matrix(0.1, nrow = 12, ncol = 1)
+res <- optim(par = beta0, fn = RSS, X = X_train, y = y_train,gr = "CG")
+beta_hat <- as.data.frame(res["par"])
+
+RSS_Test <- RSS(as.matrix(beta_hat),X_test,y_test)
+SS_tot_Test <- SS_tot(y_test)
+R_Square <- 1 - RSS_Test / SS_tot_Test
+```
+From the Beta_hat, the significant features are the fixed acidity, sulphates and alcohol. I think the magnitude of the features will affect the result so a normalized dataset would be better to be analized for better result.
+
+From the R_Square we can see the goodness of fit is good, at 0.26. RSS should not change with different initial values of beta and magnitude of the initial beta. Different solver method should also not change the result.
+
+Ridge Regression
+
+```{r pressure, echo=FALSE}
+lamda = 0.1
+Ridge <- function(par, X, y){
+  Ridge = sum((y - y_predict(par,X)) ^ 2 + lamda * sum((par[2:12])^2))
+  return (Ridge)
+}
+
+res_ridge <- optim(par = beta0, fn = Ridge, X = X_train, y = y_train)
+beta_hat_ridge <- as.data.frame(res_ridge["par"])
+
+RSS_Test_Ridge <- RSS(as.matrix(beta_hat_ridge),X_test,y_test)
+R_Square_Ridge <- 1 - RSS_Test_Ridge / SS_tot_Test
+```
+The RSS of the ridge regression degressed. I tried lamda equals 0.001, 0.01, 0.05 and 0.1, and lamda = 0.1 gives the lowes RSS.
+
+Lasso Regression
+
+```{r pressure, echo=FALSE}
+lamda = 0.01
+Lasso <- function(par, X, y){
+  Lasso = sum((y - y_predict(par,X)) ^ 2 + lamda * sum(abs(par[2:12])))
+  return (Lasso)
+}
+
+res_lasso <- optim(par = beta0, fn = Lasso, X = X_train, y = y_train)
+beta_hat_lasso <- as.data.frame(res_lasso["par"])
+
+RSS_Test_Lasso <- RSS(as.matrix(beta_hat_lasso),X_test,y_test)
+R_Square_Lasso <- 1 - RSS_Test_Lasso / SS_tot_Test
+```
+The RSS of the Lasso regression degressed. I tried lamda equals 0.001, 0.01, 0.05 and 0.1, and lamda = 0.01 gives the lowes RSS. I think the magnitude of the features will affect the result.
